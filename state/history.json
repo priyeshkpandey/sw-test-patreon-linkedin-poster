@@ -1,11 +1,1 @@
-[
-  {
-    "slug": "coverage-adequate-tests-miss-llm-code-bugs",
-    "date": "2026-10-28",
-    "title": "100% Coverage, Still Buggy: Coverage-Adequate Tests vs. Boundary and Property Tests on LLM-Style Code Bugs",
-    "tone": "myth-busting",
-    "status": "harness_failed",
-    "examples_path": "examples/2026-10-28-coverage-adequate-tests-miss-llm-code-bugs",
-    "examples_pushed": true
-  }
-]
+[]
