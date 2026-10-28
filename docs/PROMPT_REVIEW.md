@@ -7,6 +7,9 @@ Reviewed against the original brief (`patreon-linkedin-content-creator.rtf`) and
 - **rev 2:** failing techniques are findings, not aborts (outcome-based reporting); Patreon credential login + Playwright-MCP self-repair.
 - **rev 3 (owner feedback: "too complicated"):** all publishing removed. The pipeline only produces a ready-to-upload bundle; the owner posts to Patreon and LinkedIn manually. Removed: Patreon/LinkedIn publishers, credentials/tokens, repair and publish-held workflows, resume commands, exit codes. **This supersedes the brief's "post automatically" and "LinkedIn same as social-media-intel" instructions by explicit owner decision.**
 
+## Status after first live runs (2026-10-29)
+End-to-end success observed (run `40755779914`). Prompt-level risks found in practice and handled: model-written code unreliable on first attempt (retries + stricter output format), self-check expectations sometimes wrong (prompt asks to hand-verify), number check too strict (relaxed, non-fatal). See `PROGRESS.md` for the full list; still open: Patreon paste fidelity, stale files in reused examples folders.
+
 ## Coverage check (rev 3)
 | Brief requirement | Status |
 |---|---|

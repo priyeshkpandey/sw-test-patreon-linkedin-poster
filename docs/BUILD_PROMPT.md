@@ -26,6 +26,9 @@ You are a senior SDET / QA engineer who tracks AI developments in software testi
 | 7 | LinkedIn text | `linkedin_post.py` | `linkedin_post.txt` with the literal `[PATREON_LINK]` placeholder, tone rotated |
 | 8 | Bundle + state | `main.py` | `out/bundle/` incl. `UPLOAD_GUIDE.md`; append to `state/history.json` (committed back by the workflow with `[skip ci]`) |
 
+### 3.1 LLM call rules (implementation constraints)
+Per-model `thinking` setting (Sonnet `between_tools`, Haiku none) so thinking never consumes the output budget; experiment generation uses `max_tokens=32000` with streaming; a truncated reply is a repairable harness error (partial reply saved, model told to write a smaller experiment); every call logs stop reason, block types, output tokens and text length. Model replies for code use `=== FILE: name ===` blocks, never JSON; `.py` files containing stray fences/prose are rejected.
+
 ## 4. The bundle (the deliverable) — `out/bundle/`, uploaded as workflow artifact `content-bundle`
 `patreon_post.html` (open in a browser, select all, copy, paste into Patreon's editor — images load from the same folder) · `patreon_post.md` (fallback) · `outcomes.png`, `chart.png`, `card.png` · `linkedin_post.txt` · `UPLOAD_GUIDE.md` (step-by-step manual upload, verdict, tone) · `REVIEW_NOTES.md` (only if some number could not be verified) · `results.json`, `signals.json`, `topic.json` · `demo/` (only when the examples repo was not pushed).
 Patreon-friendly output rules: plain Markdown/HTML only (headings, lists, tables, images); **no Mermaid or other diagram code** (Patreon can't render it) — describe the pipeline as a numbered list or use the generated images.
