@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "slug": "coverage-vs-mutation-llm-generated-code",
+    "date": "2026-10-28",
+    "title": "Do Traditional Test Criteria Catch Bugs in LLM-Generated Code? A Mutation-Score vs Coverage Experiment",
+    "tone": "checklist",
+    "status": "ok",
+    "examples_path": "examples/2026-10-28-coverage-vs-mutation-llm-generated-code",
+    "examples_pushed": true
+  }
+]
