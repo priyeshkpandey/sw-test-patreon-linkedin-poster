@@ -19,14 +19,14 @@ def test_to_html_substitutes_images():
     assert "http://x/c.png" in html
 
 
-URL = "https://www.patreon.com/posts/1"
+URL = linkedin_post.PLACEHOLDER
 
 
 def test_linkedin_validate():
     good = f"Hook\n\nSee {URL}\n\nQ?\n\n#a #b #c"
-    assert linkedin_post.validate(good, URL) == []
-    assert linkedin_post.validate("no link #a #b #c", URL)
-    assert linkedin_post.validate(good + "x" * 1300, URL)
+    assert linkedin_post.validate(good) == []
+    assert linkedin_post.validate("no link #a #b #c")
+    assert linkedin_post.validate(good + "x" * 1300)
 
 
 class FakeClient:
@@ -43,13 +43,13 @@ class FakeClient:
 
 def test_linkedin_retries_then_succeeds():
     good = f"Hook\n\n{URL}\n\nQ?\n\n#a #b #c"
-    out = linkedin_post.write({"title": "t"}, RES, URL, "story", client=FakeClient(["bad", good]))
+    out = linkedin_post.write({"title": "t"}, RES, "story", client=FakeClient(["bad", good]))
     assert out == good
 
 
 def test_linkedin_falls_back():
-    out = linkedin_post.write({"title": "t"}, RES, URL, "story", client=FakeClient(["bad", "bad"]))
-    assert URL in out and linkedin_post.validate(out, URL) == []
+    out = linkedin_post.write({"title": "t"}, RES, "story", client=FakeClient(["bad", "bad"]))
+    assert URL in out and linkedin_post.validate(out) == []
 
 
 def test_harness_failed_post_must_say_so():

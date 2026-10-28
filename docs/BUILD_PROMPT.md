@@ -1,60 +1,48 @@
-# BUILD_PROMPT — Patreon + LinkedIn AI-in-Testing Content Automation
+# BUILD_PROMPT — AI-in-Testing Content Bundle Generator
 
-> Authoritative spec. Read fully before changing code. Reviewed in `PROMPT_REVIEW.md`; work is tracked in `IMPLEMENTATION_PLAN.md` and `PROGRESS.md`.
+> Authoritative spec (rev 3). Read fully before changing code. Review: `PROMPT_REVIEW.md`. Plan: `IMPLEMENTATION_PLAN.md`. Progress: `PROGRESS.md`.
 
 ## 1. Role
-You are a senior SDET / QA engineer who tracks AI developments in software testing and ships working code. You are building a fully automated (GitHub Actions) pipeline that (a) researches a current AI-in-testing topic, (b) builds and *runs* a real experiment for it that shows **what works and what doesn't**, (c) writes a visual, digestible Patreon post for paid subscribers built on those observations and insights, (d) publishes it, and (e) promotes the Patreon link on LinkedIn with a post whose tone changes every time.
+You are a senior SDET / QA engineer who tracks AI developments in software testing and ships working code. You are building a GitHub Actions pipeline that (a) researches a current AI-in-testing topic, (b) builds and *runs* a real experiment that shows **what works and what doesn't**, (c) writes a visual, digestible Patreon post for paid subscribers from those observations and insights, and (d) writes a LinkedIn promo post. **The pipeline publishes nothing.** It produces a ready-to-upload bundle; the owner uploads to Patreon and LinkedIn manually.
 
 ## 2. Non-negotiable principles
-1. **Content must be backed by real work — including negative results.** Every Patreon post is derived from an experiment that was actually executed in CI. The goal of the experiment is to *learn*, not to prove the technique works: it must report honestly which cases worked, which failed, and why. Numbers/charts come from the captured run output (`results.json`), never from the LLM's imagination. A technique that fails, underperforms, or only works under conditions is a **valid, publishable outcome** — those posts carry the most useful insights. Never tune the experiment until it "looks good".
-   **There is no hard failure on a failing technique.** The only repaired/retried errors are *harness* errors (the experiment code crashes or emits invalid `results.json`). If the harness still cannot be made to run after the retry budget, the run does **not** abort: it records an honest "what I tried and where it broke" outcome (`status: harness_failed`, with the attempt log) and the post is written from that. Only infrastructure failures (no signals, no API key, publisher errors) fail the run.
-2. **Demo code lives in** `priyeshkpandey/sw-testing-developing-tech-examples` (empty at start), under `examples/<YYYY-MM-DD>-<slug>/`, and is linked from the post.
-3. **Everything runs on GitHub Actions.** No local-only steps except one-time secret setup.
-4. **Safe by default:** manual runs default to `dry_run=true`; nothing is published to Patreon/LinkedIn unless dry_run is false. Cron is disabled until a successful manual run (mirrors `social-media-intel`).
-5. **LLM optional where possible:** research/state/visuals work without a key; generation stages require `ANTHROPIC_API_KEY` and fail loudly (no fake fallback content for the Patreon post). LinkedIn has a heuristic template fallback.
-6. **Never** log secrets; never scrape LinkedIn.
+1. **Content must be backed by real work — including negative results.** Every post derives from an experiment actually executed in CI. The experiment's goal is to *learn*: it reports which cases worked, partly worked, or failed, and why. Numbers/charts come from the captured run output (`results.json`), never from the LLM's imagination. A technique that fails or only works under conditions is a valid, publishable outcome. Never tune the experiment until it "looks good".
+2. **No hard failure on a failing technique.** Only *harness* errors (experiment code crashes / invalid `results.json`) are retried (max 3). If the harness never runs, the pipeline does not abort: it emits a `harness_failed` result with the attempt log, and the post is a "what I tried and where it broke" write-up, never presented as a success. Only infrastructure failures (no signals, no API key) fail the run.
+3. **Experiment code lives in** `priyeshkpandey/sw-testing-developing-tech-examples` under `examples/<YYYY-MM-DD>-<slug>/` and is linked from the post. Pushing there is the only write the pipeline makes outside the bundle; it is optional (`push_examples` input / `EXAMPLES_REPO_TOKEN`). When not pushed, the code ships inside the bundle (`demo/`) for the owner to commit.
+4. **Everything runs on GitHub Actions** (manual trigger first; cron stays commented until the owner enables it).
+5. **No publishing, no logins, no browser automation.** No Patreon/LinkedIn credentials or tokens are used or stored.
+6. Never log secrets. Generated experiment code runs with a scrubbed environment (no secrets visible).
 
 ## 3. Pipeline stages (Python 3.11+, package `pipeline/`)
 | # | Stage | Module | Output |
 |---|---|---|---|
-| 1 | Research signals | `research.py` | `signals.json` — HN Algolia + GitHub search + arXiv (public APIs, no auth) |
-| 2 | Topic selection | `topic.py` | `topic.json` {title, slug, angle, hypothesis}; avoids topics in `state/history.json` |
-| 3 | Experiment build + run | `demo.py` | `work/demo/` files, `results.json` with `status` (`ok`/`harness_failed`), per-case `outcomes` (worked/partial/failed + evidence), metrics, `ATTEMPTS.md`; up to 3 *harness* repair attempts, never a hard abort |
-| 4 | Visuals | `visuals.py` | PNG charts (matplotlib) from `results.json` (chart optional when the harness failed — then an outcomes/attempts card) + a Mermaid diagram in the post body |
-| 5 | Patreon post | `content.py` | `patreon_post.md` + `patreon_post.html` embedding image placeholders |
-| 6 | Push demo | `examples_repo.py` | commit to examples repo via `EXAMPLES_REPO_TOKEN` |
-| 7 | Publish Patreon | `publishers/patreon.py` | `patreon_url` |
-| 8 | LinkedIn post | `linkedin_post.py` | `linkedin_post.txt`, tone chosen by rotation |
-| 9 | Publish LinkedIn | `publishers/linkedin.py` | post id (same UGC flow as `social-media-intel`) |
-| 10 | Record state | `state.py` | append to `state/history.json`, committed back by workflow |
+| 1 | Research signals | `research.py` | signals — HN Algolia + GitHub search + arXiv (public APIs) |
+| 2 | Topic selection | `topic.py` | `topic.json`; avoids slugs in `state/history.json` |
+| 3 | Experiment build + run | `demo.py` | `results.json` (`status` ok/harness_failed, `verdict`, per-case `outcomes`, metrics, chart data, table, notes), `ATTEMPTS.md` on harness failure |
+| 4 | Visuals | `visuals.py` | `outcomes.png` (worked/partial/failed per case), `chart.png` (metrics; absent if harness_failed), `card.png` (headline card, also the LinkedIn image) |
+| 5 | Patreon post | `content.py` | `patreon_post.md` + `patreon_post.html` (images referenced relatively); every number verified against `results.json` |
+| 6 | Examples repo (optional) | `examples_repo.py` | experiment + images committed to the examples repo |
+| 7 | LinkedIn text | `linkedin_post.py` | `linkedin_post.txt` with the literal `[PATREON_LINK]` placeholder, tone rotated |
+| 8 | Bundle + state | `main.py` | `out/bundle/` incl. `UPLOAD_GUIDE.md`; append to `state/history.json` (committed back by the workflow with `[skip ci]`) |
 
-## 4. Patreon publishing approach (critical design decision)
-Patreon's public API v2 is **read-only for posts**; there is no endpoint to create one. Options evaluated:
-- **A. Browser automation (Playwright) that logs in with the owner's credentials** — chosen. Credentials are stored as GitHub secrets (`PATREON_EMAIL`, `PATREON_PASSWORD`); each run performs a fresh login, so there is no cookie to renew. Risks: Patreon ToS grey area, UI drift, and login challenges (captcha / email verification code / 2FA) which automation cannot solve — these raise `PatreonChallenge`, are *not* auto-repairable, and trigger the manual fallback. Use an account/password dedicated to this where possible.
-- B. Reverse-engineered internal JSON API — more brittle/riskier; rejected.
-- C. Semi-automatic hand-off (draft package + notification) — **built-in fallback**: if A fails, upload the content bundle as a workflow artifact and open a GitHub issue with the ready-to-paste post; LinkedIn is then skipped until the Patreon URL is supplied (`workflow_dispatch` input `patreon_url`).
-Selectors/flow are isolated in `pipeline/publishers/patreon.py` (`SELECTORS`, `login()`, `_drive()`), overridable by env. `PATREON_MODE=draft|publish` — first live runs use `draft`.
+## 4. The bundle (the deliverable) — `out/bundle/`, uploaded as workflow artifact `content-bundle`
+`patreon_post.html` (open in a browser, select all, copy, paste into Patreon's editor — images load from the same folder) · `patreon_post.md` (fallback) · `outcomes.png`, `chart.png`, `card.png` · `linkedin_post.txt` · `UPLOAD_GUIDE.md` (step-by-step manual upload, verdict, tone) · `results.json`, `signals.json`, `topic.json` · `demo/` (only when the examples repo was not pushed).
+Patreon-friendly output rules: plain Markdown/HTML only (headings, lists, tables, images); **no Mermaid or other diagram code** (Patreon can't render it) — describe the pipeline as a numbered list or use the generated images.
 
-### 4.1 Self-healing with the Playwright MCP
-When the Patreon flow breaks because the UI changed (not a challenge), the publisher saves debug evidence (`out/patreon_debug/`: screenshot, page HTML, URL, failing step) and the run fails into the fallback. A separate workflow, `patreon-repair.yml`, then launches Claude Code with the **Playwright MCP server** (`npx @playwright/mcp`) to: read the debug evidence → log in and explore the live Patreon creator UI through the MCP → update `SELECTORS`/`login()`/`_drive()` → verify by running the unit tests and a `draft`-mode post → **open a pull request** (never push to `main`; the owner reviews and merges). Rules for the repair agent: change only `pipeline/publishers/patreon.py` and its tests; never print or commit credentials; never publish (draft only); stop and report if a captcha/verification challenge is encountered. After merge, re-run the content workflow (or `patreon` resume command) to publish the held bundle.
-
-## 5. LinkedIn posting
-Reuse the `social-media-intel` implementation (`pipeline/publishers/linkedin.py`): UGC Posts API, `LINKEDIN_ACCESS_TOKEN`, `LINKEDIN_PERSON_URN`, `LINKEDIN_TOKEN_EXPIRES_AT`, optional image upload, 60-day token expiry issue. Difference: the post contains the Patreon link (as the call to action) and optionally the first chart as the image.
-
-### Tone rotation (marketing-expert persona)
-Tones: `contrarian`, `story`, `data-first`, `checklist`, `question-led`, `myth-busting`, `behind-the-scenes`, `prediction`. Selection = least-recently-used from `state/history.json` (ties broken deterministically by hash of the slug); the same tone may never be used in two consecutive posts. Each tone has a distinct hook formula and CTA style in `prompts/linkedin_post.md`. Hard limits: ≤1,300 chars, ≤2 emojis, exactly one link (Patreon), 3–5 hashtags, ends with a comment-inviting question, must not claim facts absent from `results.json`.
+## 5. LinkedIn text (marketing-expert persona)
+Written to be posted manually after the Patreon URL exists; the author replaces `[PATREON_LINK]`. Tones: `contrarian`, `story`, `data-first`, `checklist`, `question-led`, `myth-busting`, `behind-the-scenes`, `prediction`. Selection = least-recently-used from `state/history.json`, never the same as the previous post's tone, ties broken by a hash of the slug. Each tone has a distinct hook and CTA style (`prompts/linkedin_post.md`). Hard limits: ≤1,300 chars, ≤2 emojis, `[PATREON_LINK]` exactly once, 3–5 hashtags, ends with a specific comment-inviting question, no claims beyond `results.json`, and it must reflect the real verdict (a failure is a legitimate hook, never spun as a win). Invalid drafts are retried once, then a deterministic template is used.
 
 ## 6. Patreon post quality bar
-Structure: TL;DR (3 bullets, incl. the verdict) → why it matters now (cite signals with links) → what I built (architecture diagram) → **what worked / what didn't** (outcome table + charts from real data; negative results get equal prominence) → **insights** (why it behaved this way, when to use it, when not to, what I'd try next) → code highlights (short snippets, link to repo folder) → limits & caveats (simulated parts, small samples) → try-it-yourself. 900–1,500 words. Skimmable: short paragraphs, bold key numbers, alt text on images. A `harness_failed` run becomes a "what I tried and where it broke" post with the same insight section — never presented as a success. LinkedIn promos must reflect the real verdict (a failure is a legitimate hook, never spun as a win).
+Structure: TL;DR (3 bullets, last = verdict) → why it matters now (cite signal links) → what I built (numbered steps) → **what worked and what didn't** (outcome table + images; negative results get equal prominence) → **insights** (why it behaved so, when to use / not use, what to try next — derived from the outcomes, not generic advice) → code highlights (≤3 verbatim snippets) → limits & caveats (anything simulated/stubbed, small samples) → try it yourself (examples link). 900–1,500 words, skimmable, bold key numbers. A `harness_failed` run is written up as such and still includes insights.
 
 ## 7. State & idempotency
-`state/history.json`: list of {date, slug, title, tone, patreon_url, linkedin_id, examples_path}. A run for an already-used slug is skipped. Workflow commits state back with `[skip ci]`.
+`state/history.json`: {slug, date, title, tone, status, examples_path, examples_pushed}. A slug already present is never chosen again.
 
-## 8. Secrets
-`ANTHROPIC_API_KEY`, `EXAMPLES_REPO_TOKEN` (fine-grained PAT, contents:write on examples repo), `PATREON_EMAIL`, `PATREON_PASSWORD`, `LINKEDIN_ACCESS_TOKEN`, `LINKEDIN_PERSON_URN`, `LINKEDIN_TOKEN_EXPIRES_AT`. Optional `GITHUB_SEARCH_TOKEN`.
+## 8. Secrets (all optional except the first)
+`ANTHROPIC_API_KEY` (required) · `EXAMPLES_REPO_TOKEN` (fine-grained PAT, contents:write on the examples repo; only for pushing) · `GITHUB_TOKEN` is used automatically for research rate limits and committing state.
 
 ## 9. Testing & definition of done
-pytest unit tests for every pure stage with LLM/HTTP/Playwright mocked (including: failing technique still yields a post; harness failure yields a `harness_failed` post; login-challenge is distinguished from selector breakage); ruff clean; workflow YAML valid; `python -m pipeline.main run --dry-run` (needs `ANTHROPIC_API_KEY`) produces all artifacts locally without publishing. Done = all plan items in `IMPLEMENTATION_PLAN.md` checked and `PROGRESS.md` current.
+pytest with LLM/HTTP mocked, covering: failing technique still yields a result and post; harness failure yields a `harness_failed` result; numbers not in `results.json` are rejected; LinkedIn validation/tone rotation; a full `run()` produces every bundle file and publishes nothing. `ruff` clean; workflow YAML valid. Done = all plan items checked and `PROGRESS.md` current.
 
 ## 10. Session-continuity rule
-At the start of every session read `PROGRESS.md` + `IMPLEMENTATION_PLAN.md`; at the end tick completed items, log decisions/blockers, and set "Next action". Commit docs with code.
+At session start read `PROGRESS.md` + `IMPLEMENTATION_PLAN.md`; at the end tick items, log decisions/blockers, set "Next action". Commit docs with code.

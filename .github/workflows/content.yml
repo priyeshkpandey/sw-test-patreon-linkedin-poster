@@ -1,22 +1,15 @@
-name: Create and publish content
+name: Create content bundle
 
+# Generates a ready-to-upload Patreon post (+ LinkedIn text) as a downloadable artifact.
+# Nothing is posted anywhere; you upload manually.
 on:
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: "Generate everything but publish nothing"
+      push_examples:
+        description: "Commit the executed experiment to the examples repo (needs EXAMPLES_REPO_TOKEN)"
         type: boolean
         default: true
-      patreon_mode:
-        description: "draft = save Patreon post unpublished; publish = go live"
-        type: choice
-        options: [draft, publish]
-        default: draft
-      patreon_url:
-        description: "Skip Patreon automation and promote this URL on LinkedIn (resume mode)"
-        type: string
-        default: ""
-  # Enable only after a successful manual run (see docs/IMPLEMENTATION_PLAN.md 4.5):
+  # Enable once a manual run looks good:
   # schedule:
   #   - cron: "0 7 * * TUE,FRI"
 
@@ -26,10 +19,9 @@ concurrency:
 
 permissions:
   contents: write
-  issues: write
 
 jobs:
-  run:
+  generate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -39,76 +31,24 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -e .
-      - run: playwright install --with-deps chromium
 
-      - name: LinkedIn token expiry check
-        env:
-          LINKEDIN_TOKEN_EXPIRES_AT: ${{ secrets.LINKEDIN_TOKEN_EXPIRES_AT }}
-        run: python -m pipeline.publishers.linkedin check-expiry || echo "::warning::LinkedIn token expiring soon — renew LINKEDIN_ACCESS_TOKEN"
-
-      - name: Dry run
-        if: ${{ inputs.dry_run }}
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GITHUB_SEARCH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python -m pipeline.main run --dry-run
-
-      - name: Live run
-        id: live
-        if: ${{ !inputs.dry_run }}
+      - name: Generate bundle
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_SEARCH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EXAMPLES_REPO_TOKEN: ${{ secrets.EXAMPLES_REPO_TOKEN }}
-          PATREON_EMAIL: ${{ secrets.PATREON_EMAIL }}
-          PATREON_PASSWORD: ${{ secrets.PATREON_PASSWORD }}
-          PATREON_MODE: ${{ inputs.patreon_mode }}
-          PATREON_URL_OVERRIDE: ${{ inputs.patreon_url }}
-          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
-          LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
-        run: |
-          set +e
-          python -m pipeline.main run
-          code=$?
-          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
-          exit $code
+        run: python -m pipeline.main run ${{ inputs.push_examples == false && '--no-push-examples' || '' }}
 
-      - name: Upload artifacts
-        if: always()
+      - name: Upload bundle
         uses: actions/upload-artifact@v4
         with:
           name: content-bundle
-          path: out/
-          if-no-files-found: ignore
+          path: out/bundle/
+          if-no-files-found: error
 
-      - name: Commit state
-        if: ${{ !inputs.dry_run && always() }}
+      - name: Commit run history
         run: |
           git config user.name "content-bot"
           git config user.email "content-bot@users.noreply.github.com"
           git add state/history.json
           git diff --cached --quiet || (git commit -m "chore: update run history [skip ci]" && git pull --rebase && git push)
-
-      - name: Trigger Patreon self-repair (UI flow broke, exit 2)
-        if: ${{ failure() && steps.live.outputs.exit_code == '2' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run patreon-repair.yml -f run_id=${{ github.run_id }}
-
-      - name: Open issue with hand-off bundle on failure
-        if: ${{ failure() && !inputs.dry_run }}
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            await github.rest.issues.create({
-              ...context.repo,
-              title: `Content run failed — ${new Date().toISOString().slice(0, 10)}`,
-              body: [
-                `Run: ${runUrl}`,
-                '',
-                'Exit code 2 = Patreon UI flow broke (the `patreon-repair` workflow was triggered and will open a PR). Exit code 3 = login challenge/credentials — fix manually. Otherwise: if the Patreon step failed, download the `content-bundle` artifact (`patreon_post.md`/`.html`, charts), publish it manually, then re-run this workflow with the `patreon_url` input to post on LinkedIn.',
-                'If the LinkedIn step failed, the access token has probably expired (60-day lifetime).',
-              ].join('\n'),
-              labels: ['workflow-failure'],
-            });

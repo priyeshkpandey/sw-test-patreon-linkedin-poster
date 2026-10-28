@@ -6,7 +6,7 @@ failure as a success. Write Markdown, 900-1500 words, skimmable (short paragraph
 Required structure (use these H2 headings):
 ## TL;DR  (3 bullets; the last one is the verdict from results.json `verdict`)
 ## Why this matters now  (cite the provided signal links inline)
-## What I built  (explain the experiment; include one ```mermaid``` flowchart)
+## What I built  (explain the experiment; describe the pipeline as a short numbered list of steps — NO mermaid or other diagram code, Patreon cannot render it)
 ## What worked and what didn't  (render the `outcomes` as a table with evidence; put {{IMG_OUTCOMES}} on its own line, and {{IMG_CHART}} on its own line if a chart exists)
 ## Insights  (why it behaved this way; when to use it; when NOT to; what you would try next. These must follow from the outcomes - no generic advice)
 ## Code highlights  (<=3 short snippets taken verbatim from the provided files)
