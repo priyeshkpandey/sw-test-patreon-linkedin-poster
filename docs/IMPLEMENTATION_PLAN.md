@@ -41,6 +41,12 @@ Legend: [x] done · [ ] todo. Update this file and `PROGRESS.md` after every wor
 - [x] 2e.3 Tests
 - [ ] 2e.4 Re-run and confirm a full bundle (and code) lands in the examples repo
 
+## Phase 2f — Fix: LinkedIn step crashed (400) + experiment harness failing (run 2026-10-28 19:14)
+- [x] 2f.1 Crash: `thinking: between_tools` is rejected by the Haiku model ("not supported for this model"); `disabled` was rejected by Sonnet. Accepted values differ per model, so the parameter is now omitted entirely (Sonnet already "does not think before responding"). Lesson: stop guessing model-specific params; the `llm:` log line shows replies are fine without it
+- [x] 2f.2 Harness: attempt 1 put prose + several fenced blocks inside `demo.py` (a leading ``` -> SyntaxError). Now rejected with an explicit "output ONE clean file" message, and the system prompt forbids notes/dead code. Attempts 2-3 failed the model's own self-check (`suite fails on original discount`: expected 81.0, got 72.0) — an arithmetic mistake in the generated expected values; prompt now tells it to hand-verify expected values
+- [x] 2f.3 Tests (29 pass)
+- [ ] 2f.4 Re-run. If harness_failed persists from the model's own wrong expectations, consider raising DEMO_MAX_ATTEMPTS to 4-5 or simplifying the experiment scope in the topic prompt
+
 ## Phase 3 — Automation
 - [x] 3.1 ci.yml (lint + tests)
 - [x] 3.2 content.yml (manual trigger → bundle artifact → commit state)

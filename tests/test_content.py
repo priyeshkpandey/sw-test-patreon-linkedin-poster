@@ -92,7 +92,7 @@ def test_topic_gives_up_with_runtime_error():
         topic.choose([{"title": "s", "url": "u"}], set(), client=FakeClient(['{"title": "x'] * 3))
 
 
-def test_complete_uses_accepted_thinking_setting_and_ignores_non_text_blocks():
+def test_complete_sends_no_thinking_param_and_ignores_non_text_blocks():
     seen = {}
 
     class C:
@@ -107,4 +107,4 @@ def test_complete_uses_accepted_thinking_setting_and_ignores_non_text_blocks():
     c = C()
     c.messages = c
     assert llm.complete("s", "u", model="m", client=c) == "hi"
-    assert seen["thinking"] == {"type": "between_tools"}
+    assert "thinking" not in seen  # accepted values differ per model (Haiku vs Sonnet): send none

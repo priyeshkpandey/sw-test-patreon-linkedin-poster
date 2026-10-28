@@ -31,9 +31,6 @@ def complete(system: str, user: str, *, model: str, max_tokens: int = 4096, clie
         model=model,
         max_tokens=max_tokens,
         system=system,
-        # This model rejects {"type": "disabled"} (HTTP 400) and asks for "between_tools" to switch
-        # thinking off.
-        thinking={"type": "between_tools"},
         messages=[{"role": "user", "content": user}],
     )
     text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
@@ -55,6 +52,10 @@ def extract_files(text: str) -> dict[str, str]:
     for name, body in _FILE_RE.findall(text):
         body = body.strip("\n")
         m = re.fullmatch(r"```\w*\n(.*)\n```", body, re.S)
+        if not m and re.search(r"^```", body, re.M):
+            raise ValueError(
+                f"{name}: contains markdown fences/prose inside the file body. Output each file "
+                "as ONE clean file: no explanations, no notes, no extra code blocks, no dead code.")
         files[name] = (m.group(1) if m else body) + "\n"
     if not files:
         raise ValueError("no '=== FILE: name ===' blocks found in model reply")

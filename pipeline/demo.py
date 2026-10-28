@@ -43,7 +43,12 @@ Reply with the three files as plain text blocks, NOT JSON, exactly in this forma
 <file content>
 === FILE: README.md ===
 <file content>
-=== END ==="""
+=== END ===
+Each file body must be ONLY that file's final content (optionally inside one ``` fence). No prose,
+notes, "cleanup" remarks, alternative versions or dead code inside or between files — write the
+file once, correctly.
+Your own harness self-checks (e.g. "the suite must pass on the original code") must be correct:
+verify by hand that your expected values are right before asserting them."""
 
 REQUIRED_KEYS = ("verdict", "summary", "outcomes", "chart", "table", "notes")
 VERDICTS = ("worked", "partial", "failed")

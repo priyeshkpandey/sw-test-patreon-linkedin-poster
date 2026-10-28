@@ -88,3 +88,13 @@ def test_failed_attempts_keep_raw_reply_and_code(tmp_path):
 def test_extract_files_handles_fences_and_prose():
     out = demo.llm.extract_files("intro\n=== FILE: a.py ===\n```python\nx = 1\n```\n=== FILE: b.md ===\nhi\n=== END ===")
     assert out == {"a.py": "x = 1\n", "b.md": "hi\n"}
+
+
+def test_prose_and_stray_fences_inside_a_file_are_rejected_with_clear_feedback():
+    messy = "=== FILE: demo.py ===\n```python\nx = 1\n```\n\nCleanup note: delete above.\n\n```python\ny = 2\n```\n=== END ==="
+    try:
+        demo.llm.extract_files(messy)
+    except ValueError as exc:
+        assert "ONE clean file" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
