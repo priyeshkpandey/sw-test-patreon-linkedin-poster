@@ -8,7 +8,8 @@ You are a senior SDET / QA engineer who tracks AI developments in software testi
 ## 2. Non-negotiable principles
 1. **Content must be backed by real work — including negative results.** Every post derives from an experiment actually executed in CI. The experiment's goal is to *learn*: it reports which cases worked, partly worked, or failed, and why. Numbers/charts come from the captured run output (`results.json`), never from the LLM's imagination. A technique that fails or only works under conditions is a valid, publishable outcome. Never tune the experiment until it "looks good".
 2. **No hard failure on a failing technique.** Only *harness* errors (experiment code crashes / invalid `results.json`) are retried (max 3). If the harness never runs, the pipeline does not abort: it emits a `harness_failed` result with the attempt log, and the post is a "what I tried and where it broke" write-up, never presented as a success. Only infrastructure failures (no signals, no API key) fail the run.
-3. **Experiment code lives in** `priyeshkpandey/sw-testing-developing-tech-examples` under `examples/<YYYY-MM-DD>-<slug>/` and is linked from the post. Pushing there is the only write the pipeline makes outside the bundle; it is optional (`push_examples` input / `EXAMPLES_REPO_TOKEN`). When not pushed, the code ships inside the bundle (`demo/`) for the owner to commit.
+3. **The examples repo must always contain the code and the proof it ran.** Each `examples/<date>-<slug>/` folder holds `demo.py`, `test_demo.py`, `README.md`, `results.json`, `run_output.txt` and `test_output.txt` (the real stdout/stderr of the run), plus the generated images. Even for a `harness_failed` run it holds the last attempt's code, every raw model reply (`attempt_N_reply.txt`) and `ATTEMPTS.md` — never just images and JSON.
+   **Experiment code lives in** `priyeshkpandey/sw-testing-developing-tech-examples` under `examples/<YYYY-MM-DD>-<slug>/` and is linked from the post. Pushing there is the only write the pipeline makes outside the bundle; it is optional (`push_examples` input / `EXAMPLES_REPO_TOKEN`). When not pushed, the code ships inside the bundle (`demo/`) for the owner to commit.
 4. **Everything runs on GitHub Actions** (manual trigger first; cron stays commented until the owner enables it).
 5. **No publishing, no logins, no browser automation.** No Patreon/LinkedIn credentials or tokens are used or stored.
 6. Never log secrets. Generated experiment code runs with a scrubbed environment (no secrets visible).
@@ -18,7 +19,7 @@ You are a senior SDET / QA engineer who tracks AI developments in software testi
 |---|---|---|---|
 | 1 | Research signals | `research.py` | signals — HN Algolia + GitHub search + arXiv (public APIs) |
 | 2 | Topic selection | `topic.py` | `topic.json`; avoids slugs in `state/history.json` |
-| 3 | Experiment build + run | `demo.py` | `results.json` (`status` ok/harness_failed, `verdict`, per-case `outcomes`, metrics, chart data, table, notes), `ATTEMPTS.md` on harness failure |
+| 3 | Experiment build + run | `demo.py` (model replies with `=== FILE: name ===` text blocks, not JSON — escaped code in JSON proved fragile) | `results.json` (`status` ok/harness_failed, `verdict`, per-case `outcomes`, metrics, chart data, table, notes), `ATTEMPTS.md` on harness failure |
 | 4 | Visuals | `visuals.py` | `outcomes.png` (worked/partial/failed per case), `chart.png` (metrics; absent if harness_failed), `card.png` (headline card, also the LinkedIn image) |
 | 5 | Patreon post | `content.py` | `patreon_post.md` + `patreon_post.html` (images referenced relatively); every number verified against `results.json` |
 | 6 | Examples repo (optional) | `examples_repo.py` | experiment + images committed to the examples repo |

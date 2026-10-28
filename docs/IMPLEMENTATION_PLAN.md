@@ -18,6 +18,12 @@ Legend: [x] done · [ ] todo. Update this file and `PROGRESS.md` after every wor
 - [x] 2.1 linkedin_post.py (text only, `[PATREON_LINK]` placeholder, tone rotation)
 - [x] 2.2 main.py: build `out/bundle/` incl. UPLOAD_GUIDE.md; record state
 - [x] 2.3 Removed: Patreon/LinkedIn publishers, repair + publish-held workflows, Playwright
+## Phase 2b — Fix: examples repo had images/JSON but no code (first live run, 2026-10-28)
+- [x] 2b.1 Root cause: model reply was JSON-wrapped code; parse failed 3x ("no JSON found"), so no files were written. Switched to `=== FILE ===` blocks (`llm.extract_files`), max_tokens 8000 -> 16000, truncation warning
+- [x] 2b.2 Save run evidence in the folder: `run_output.txt`, `test_output.txt`; on failure keep `attempt_N_reply.txt` + last attempt's code
+- [x] 2b.3 Tests for the above (24 pass)
+- [ ] 2b.4 Re-run the workflow; confirm the new examples folder has code + run output. The old `examples/2026-10-28-coverage-criteria-vs-llm-style-bugs` folder is image+JSON only; its slug is marked used in `state/history.json` (delete that entry to retry the topic)
+
 ## Phase 3 — Automation
 - [x] 3.1 ci.yml (lint + tests)
 - [x] 3.2 content.yml (manual trigger → bundle artifact → commit state)

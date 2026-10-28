@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from typing import Any
@@ -21,6 +22,9 @@ def _client() -> Any:
     return anthropic.Anthropic(api_key=key)
 
 
+log = logging.getLogger(__name__)
+
+
 def complete(system: str, user: str, *, model: str, max_tokens: int = 4096, client: Any = None) -> str:
     client = client or _client()
     resp = client.messages.create(
@@ -29,7 +33,24 @@ def complete(system: str, user: str, *, model: str, max_tokens: int = 4096, clie
         system=system,
         messages=[{"role": "user", "content": user}],
     )
+    if getattr(resp, "stop_reason", None) == "max_tokens":
+        log.warning("llm: reply truncated at max_tokens=%d (model=%s)", max_tokens, model)
     return "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
+
+
+_FILE_RE = re.compile(r"^=== FILE: (\S+) ===[ \t]*\n(.*?)(?=^=== FILE: \S+ ===|^=== END ===|\Z)", re.S | re.M)
+
+
+def extract_files(text: str) -> dict[str, str]:
+    """Parse `=== FILE: name ===` blocks (code is not escaped, unlike JSON). Strips a wrapping ``` fence."""
+    files = {}
+    for name, body in _FILE_RE.findall(text):
+        body = body.strip("\n")
+        m = re.fullmatch(r"```\w*\n(.*)\n```", body, re.S)
+        files[name] = (m.group(1) if m else body) + "\n"
+    if not files:
+        raise ValueError("no '=== FILE: name ===' blocks found in model reply")
+    return files
 
 
 def extract_json(text: str) -> Any:

@@ -1,4 +1,3 @@
-import json
 
 from pipeline import demo
 
@@ -24,7 +23,8 @@ class FakeClient:
 
 
 def reply(demo_py):
-    return json.dumps({"files": {"demo.py": demo_py, "test_demo.py": GOOD_TEST, "README.md": "r"}})
+    return (f"=== FILE: demo.py ===\n{demo_py}\n=== FILE: test_demo.py ===\n```python\n{GOOD_TEST}```\n"
+            "=== FILE: README.md ===\nr\n=== END ===")
 
 
 def test_runs_and_returns_measured_results(tmp_path):
@@ -58,7 +58,7 @@ def test_invalid_outcome_verdict_is_a_harness_error(tmp_path):
 
 
 def test_rejects_path_traversal(tmp_path):
-    bad = json.dumps({"files": {"../evil.py": "x"}})
+    bad = "=== FILE: ../evil.py ===\nx\n=== END ==="
     res = demo.build_and_run({"title": "t"}, tmp_path / "d", client=FakeClient([bad] * 3))
     assert res["status"] == "harness_failed" and not (tmp_path / "evil.py").exists()
 
@@ -67,3 +67,24 @@ def test_secrets_not_visible_to_demo(tmp_path, monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "secret")
     leak = GOOD_DEMO + "\nimport os\nassert 'ANTHROPIC_API_KEY' not in os.environ\n"
     assert demo.build_and_run({"title": "t"}, tmp_path, client=FakeClient([reply(leak)]))
+
+
+def test_code_and_run_output_are_saved(tmp_path):
+    demo.build_and_run({"title": "t"}, tmp_path, client=FakeClient([reply(GOOD_DEMO)]))
+    for name in ("demo.py", "test_demo.py", "README.md", "results.json", "run_output.txt", "test_output.txt"):
+        assert (tmp_path / name).is_file(), name
+    assert "test_ok" in (tmp_path / "test_output.txt").read_text()
+    assert not list(tmp_path.glob("attempt_*_reply.txt"))
+
+
+def test_failed_attempts_keep_raw_reply_and_code(tmp_path):
+    res = demo.build_and_run({"title": "t"}, tmp_path,
+                             client=FakeClient(["no files here"] + [reply("raise SystemExit(3)")] * 2))
+    assert res["status"] == "harness_failed"
+    assert (tmp_path / "attempt_1_reply.txt").read_text() == "no files here"
+    assert "SystemExit" in (tmp_path / "demo.py").read_text()  # last attempt's code is kept
+
+
+def test_extract_files_handles_fences_and_prose():
+    out = demo.llm.extract_files("intro\n=== FILE: a.py ===\n```python\nx = 1\n```\n=== FILE: b.md ===\nhi\n=== END ===")
+    assert out == {"a.py": "x = 1\n", "b.md": "hi\n"}

@@ -36,7 +36,14 @@ Rules:
    "chart": {"title": str, "ylabel": str, "labels": [str], "series": {"<name>": [number]}},
    "table": {"columns": [str], "rows": [[...]]},
    "notes": [str]}   # include honest limitations
-Reply with JSON only: {"files": {"demo.py": "...", "test_demo.py": "...", "README.md": "..."}}"""
+Reply with the three files as plain text blocks, NOT JSON, exactly in this format and nothing else:
+=== FILE: demo.py ===
+<file content>
+=== FILE: test_demo.py ===
+<file content>
+=== FILE: README.md ===
+<file content>
+=== END ==="""
 
 REQUIRED_KEYS = ("verdict", "summary", "outcomes", "chart", "table", "notes")
 VERDICTS = ("worked", "partial", "failed")
@@ -73,6 +80,11 @@ def _write_files(files: dict[str, str], folder: Path) -> None:
         target.write_text(content, encoding="utf-8")
 
 
+def _save_log(folder: Path, name: str, text: str) -> None:
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / name).write_text(text, encoding="utf-8")
+
+
 def harness_failed(topic: dict, attempts: list[str]) -> dict:
     """Honest result for a run whose harness never worked — still publishable as a 'what broke' post."""
     return {
@@ -93,21 +105,29 @@ def build_and_run(topic: dict, folder: Path, *, client=None) -> dict:
     feedback = ""
     for attempt in range(1, DEMO_MAX_ATTEMPTS + 1):
         prompt = f"Topic: {json.dumps(topic)}\n{feedback}"
-        reply = llm.complete(SYSTEM, prompt, model=SONNET_MODEL, max_tokens=8000, client=client)
+        reply = llm.complete(SYSTEM, prompt, model=SONNET_MODEL, max_tokens=16000, client=client)
+        # Always keep the raw reply, so even a broken attempt leaves its code in the examples repo.
+        _save_log(folder, f"attempt_{attempt}_reply.txt", reply)
         try:
-            files = llm.extract_json(reply)["files"]
+            files = llm.extract_files(reply)
             _write_files(files, folder)
             (folder / "results.json").unlink(missing_ok=True)
             run = _run([sys.executable, "demo.py"], folder)
+            _save_log(folder, "run_output.txt",
+                      f"$ python demo.py  (exit {run.returncode})\n--- stdout ---\n{run.stdout}\n--- stderr ---\n{run.stderr}")
             if run.returncode != 0:
                 raise RuntimeError(f"demo.py exit {run.returncode}:\n{run.stderr[-1500:]}")
-            tests = _run([sys.executable, "-m", "unittest", "-q", "test_demo"], folder)
+            tests = _run([sys.executable, "-m", "unittest", "-v", "test_demo"], folder)
+            _save_log(folder, "test_output.txt",
+                      f"$ python -m unittest -v test_demo  (exit {tests.returncode})\n{tests.stdout}\n{tests.stderr}")
             if tests.returncode != 0:
                 raise RuntimeError(f"tests failed:\n{tests.stderr[-1500:]}")
             res = json.loads((folder / "results.json").read_text(encoding="utf-8"))
             validate_results(res)
             res["status"] = "ok"
             res["_test_log"] = tests.stderr.strip()[-500:]
+            for stale in folder.glob("attempt_*_reply.txt"):  # only worth keeping for failed runs
+                stale.unlink()
             return res
         except Exception as exc:  # noqa: BLE001 — feed any failure back for repair
             log.warning("demo: attempt %d failed: %s", attempt, exc)
@@ -119,7 +139,8 @@ def build_and_run(topic: dict, folder: Path, *, client=None) -> dict:
     folder.mkdir(parents=True, exist_ok=True)
     res = harness_failed(topic, attempts)
     (folder / "ATTEMPTS.md").write_text(
-        "# Attempt log\n\n" + "\n\n".join(f"## Attempt {i}\n```\n{a}\n```" for i, a in enumerate(attempts, 1)),
+        "# Attempt log\n\nThe model's raw reply for each attempt is in `attempt_N_reply.txt`; "
+        "any code it produced is in this folder.\n\n" + "\n\n".join(f"## Attempt {i}\n```\n{a}\n```" for i, a in enumerate(attempts, 1)),
         encoding="utf-8")
     (folder / "results.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
     return res

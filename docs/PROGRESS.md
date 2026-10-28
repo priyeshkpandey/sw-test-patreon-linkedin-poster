@@ -1,6 +1,6 @@
 # Progress Log (read first each session)
 
-**Next action:** Phase 4 in IMPLEMENTATION_PLAN.md (owner actions: secrets, push, first run).
+**Next action:** plan 2b.4 (re-run workflow), then Phase 4 in IMPLEMENTATION_PLAN.md (owner actions: secrets, push, first run).
 
 ## Decisions
 - 2026-10-28 rev 2: failing techniques/harness are not hard failures; outcome-based reporting; unfixable harness => `harness_failed` post.
@@ -9,6 +9,8 @@
 
 ## Sessions
 - 2026-10-28 S1: repo initialised; rev 1 built; rev 2 and rev 3 applied. 21 tests pass, ruff clean. Local commits only, not pushed. Pipeline never run end to end (needs ANTHROPIC_API_KEY).
+
+- 2026-10-29 S2: first live run found (via owner) that the examples repo got only images + JSON. Cause: JSON-wrapped code failed to parse 3x -> harness_failed -> no code written. Fixed (see plan 2b). Needs a re-run to confirm.
 
 ## Blockers / open questions
 - Examples repo `sw-testing-developing-tech-examples` is empty; first push creates the initial commit.
