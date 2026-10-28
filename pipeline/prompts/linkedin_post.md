@@ -18,6 +18,7 @@ Write in that tone ONLY. The post must not sound like a template; vary rhythm, o
 - ≤1,300 characters total. ≤2 emojis. Short lines, whitespace for mobile reading.
 - Include the Patreon URL exactly once, introduced by a benefit-led line (full demo, code, charts for members).
 - Every claim and number must come from the provided results; never invent statistics.
+- Reflect the real `verdict`. A technique that failed or only partly worked (or a harness_failed run) is a legitimate hook - lead with the surprise or the lesson; never present a failure as a win.
 - End with ONE specific, comment-inviting question (before the hashtags unless tone demands otherwise).
 - 3–5 relevant hashtags on the last line.
 - Return only the post text.

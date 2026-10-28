@@ -52,6 +52,20 @@ def test_linkedin_falls_back():
     assert URL in out and linkedin_post.validate(out, URL) == []
 
 
+def test_harness_failed_post_must_say_so():
+    res = {**RES, "status": "harness_failed"}
+    with pytest.raises(RuntimeError, match="harness_failed"):
+        content.write_post({"title": "t"}, res, __import__("pathlib").Path("."), "u", [],
+                           client=FakeClient(["# Great success, it all works"]))
+    ok = content.write_post({"title": "t"}, res, __import__("pathlib").Path("."), "u", [],
+                            client=FakeClient(["## What I tried and where it broke"]))
+    assert "broke" in ok
+
+
+def test_missing_image_placeholder_removed():
+    assert "IMG_CHART" not in content.to_html("a\n\n{{IMG_CHART}}\n\nb", {})
+
+
 def test_post_numbers_retry_then_raise():
     c = FakeClient(["costs 99.9", "still 88.8"])
     with pytest.raises(RuntimeError):

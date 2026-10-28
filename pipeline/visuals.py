@@ -12,7 +12,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 _COLORS = ["#2563eb", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6"]
 
 
-def bar_chart(results: dict, out: Path) -> Path:
+def bar_chart(results: dict, out: Path) -> Path | None:
+    ch = results.get("chart")
+    if not ch:  # harness_failed runs have no measured chart
+        return None
     ch = results["chart"]
     labels, series = ch["labels"], ch["series"]
     fig, ax = plt.subplots(figsize=(8, 4.5), dpi=160)
@@ -29,6 +32,27 @@ def bar_chart(results: dict, out: Path) -> Path:
     fig.tight_layout()
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out)
+    plt.close(fig)
+    return out
+
+
+_VERDICT_COLORS = {"worked": "#22c55e", "partial": "#f59e0b", "failed": "#ef4444"}
+
+
+def outcomes_chart(results: dict, out: Path) -> Path:
+    """What worked / what didn't — one coloured row per case, straight from results.json."""
+    rows = results["outcomes"][:8]
+    fig, ax = plt.subplots(figsize=(8, 0.6 * len(rows) + 1.4), dpi=160)
+    ax.axis("off")
+    ax.set_title("What worked and what didn't", fontweight="bold", loc="left")
+    for i, o in enumerate(rows):
+        y = 1 - (i + 1) / (len(rows) + 1)
+        ax.add_patch(plt.Rectangle((0, y - 0.04), 0.03, 0.08, color=_VERDICT_COLORS[o["verdict"]],
+                                   transform=ax.transAxes))
+        ax.text(0.05, y, f'{o["case"][:46]}  —  {o["verdict"]}', va="center", fontsize=9,
+                transform=ax.transAxes)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
     return out
 

@@ -39,6 +39,8 @@ def write_post(topic: dict, results: dict, folder: Path, examples_url: str, sign
     })
     system = (PROMPTS_DIR / "patreon_post.md").read_text(encoding="utf-8")
     md = llm.complete(system, payload, model=SONNET_MODEL, max_tokens=6000, client=client)
+    if results.get("status") == "harness_failed" and "harness" not in md.lower() and "broke" not in md.lower():
+        raise RuntimeError("content: harness_failed run must be reported as such, not as a result")
     bad = check_numbers(md, results, extra_allowed=json.dumps(topic) + json.dumps(signals[:8]))
     if bad:
         md = llm.complete(
@@ -55,4 +57,5 @@ def to_html(md: str, images: dict[str, str]) -> str:
     """Render HTML; images maps placeholder name -> URL."""
     for key, url in images.items():
         md = md.replace("{{" + key + "}}", f"![{key.lower()}]({url})")
+    md = re.sub(r"^\{\{IMG_\w+\}\}\s*$", "", md, flags=re.M)  # drop placeholders with no image
     return markdown.markdown(md, extensions=["tables", "fenced_code"])

@@ -60,12 +60,18 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_SEARCH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EXAMPLES_REPO_TOKEN: ${{ secrets.EXAMPLES_REPO_TOKEN }}
-          PATREON_SESSION_ID: ${{ secrets.PATREON_SESSION_ID }}
+          PATREON_EMAIL: ${{ secrets.PATREON_EMAIL }}
+          PATREON_PASSWORD: ${{ secrets.PATREON_PASSWORD }}
           PATREON_MODE: ${{ inputs.patreon_mode }}
           PATREON_URL_OVERRIDE: ${{ inputs.patreon_url }}
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
           LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
-        run: python -m pipeline.main run
+        run: |
+          set +e
+          python -m pipeline.main run
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit $code
 
       - name: Upload artifacts
         if: always()
@@ -83,6 +89,12 @@ jobs:
           git add state/history.json
           git diff --cached --quiet || (git commit -m "chore: update run history [skip ci]" && git pull --rebase && git push)
 
+      - name: Trigger Patreon self-repair (UI flow broke, exit 2)
+        if: ${{ failure() && steps.live.outputs.exit_code == '2' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run patreon-repair.yml -f run_id=${{ github.run_id }}
+
       - name: Open issue with hand-off bundle on failure
         if: ${{ failure() && !inputs.dry_run }}
         uses: actions/github-script@v7
@@ -95,7 +107,7 @@ jobs:
               body: [
                 `Run: ${runUrl}`,
                 '',
-                'If the Patreon step failed, download the `content-bundle` artifact (`patreon_post.md`/`.html`, charts), publish it manually, then re-run this workflow with the `patreon_url` input to post on LinkedIn.',
+                'Exit code 2 = Patreon UI flow broke (the `patreon-repair` workflow was triggered and will open a PR). Exit code 3 = login challenge/credentials — fix manually. Otherwise: if the Patreon step failed, download the `content-bundle` artifact (`patreon_post.md`/`.html`, charts), publish it manually, then re-run this workflow with the `patreon_url` input to post on LinkedIn.',
                 'If the LinkedIn step failed, the access token has probably expired (60-day lifetime).',
               ].join('\n'),
               labels: ['workflow-failure'],

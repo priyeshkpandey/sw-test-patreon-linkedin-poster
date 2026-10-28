@@ -1,12 +1,10 @@
 import json
 
-import pytest
-
 from pipeline import demo
 
 GOOD_DEMO = '''
 import json
-json.dump({"summary": {"x": 1}, "chart": {"title": "t", "ylabel": "y", "labels": ["a"],
+json.dump({"verdict": "v", "summary": {"x": 1}, "outcomes": [{"case": "c", "verdict": "failed", "evidence": "e"}], "chart": {"title": "t", "ylabel": "y", "labels": ["a"],
  "series": {"s": [1]}}, "table": {"columns": ["c"], "rows": [[1]]}, "notes": ["n"]},
  open("results.json", "w"))
 '''
@@ -39,16 +37,30 @@ def test_repairs_after_failure(tmp_path):
     assert demo.build_and_run({"title": "t"}, tmp_path, client=c)["summary"]["x"] == 1
 
 
-def test_aborts_when_never_works(tmp_path):
+def test_failing_technique_is_a_valid_result(tmp_path):
+    # outcomes marked "failed" must NOT trigger repair/abort — they are the finding
+    res = demo.build_and_run({"title": "t"}, tmp_path, client=FakeClient([reply(GOOD_DEMO)]))
+    assert res["status"] == "ok" and res["outcomes"][0]["verdict"] == "failed"
+
+
+def test_harness_never_works_yields_publishable_result(tmp_path):
     c = FakeClient([reply("raise SystemExit(3)")] * 3)
-    with pytest.raises(RuntimeError, match="no working demo"):
-        demo.build_and_run({"title": "t"}, tmp_path, client=c)
+    res = demo.build_and_run({"title": "t"}, tmp_path, client=c)
+    assert res["status"] == "harness_failed" and len(res["outcomes"]) == 3
+    assert (tmp_path / "ATTEMPTS.md").is_file() and "chart" not in res
+    demo.validate_results({**res, "chart": {"labels": ["a"], "series": {"s": [1]}}})
+
+
+def test_invalid_outcome_verdict_is_a_harness_error(tmp_path):
+    bad = GOOD_DEMO.replace('"failed"', '"great"')
+    res = demo.build_and_run({"title": "t"}, tmp_path, client=FakeClient([reply(bad)] * 3))
+    assert res["status"] == "harness_failed"
 
 
 def test_rejects_path_traversal(tmp_path):
     bad = json.dumps({"files": {"../evil.py": "x"}})
-    with pytest.raises(RuntimeError):
-        demo.build_and_run({"title": "t"}, tmp_path / "d", client=FakeClient([bad] * 3))
+    res = demo.build_and_run({"title": "t"}, tmp_path / "d", client=FakeClient([bad] * 3))
+    assert res["status"] == "harness_failed" and not (tmp_path / "evil.py").exists()
 
 
 def test_secrets_not_visible_to_demo(tmp_path, monkeypatch):

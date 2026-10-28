@@ -2,6 +2,10 @@
 
     python -m pipeline.main run [--dry-run] [--patreon-url URL]
     python -m pipeline.main linkedin --patreon-url URL      # resume after a Patreon-only success
+    python -m pipeline.main patreon --bundle DIR            # publish a held bundle (after a repair), then LinkedIn
+
+Exit codes: 0 ok · 1 other failure · 2 Patreon UI flow broke (repairable by patreon-repair) ·
+3 Patreon login challenge / missing credentials (needs the owner).
 """
 
 from __future__ import annotations
@@ -37,12 +41,14 @@ def run(dry_run: bool, patreon_url: str | None = None) -> int:
     results = demo.build_and_run(tp, folder)
     (OUT_DIR / "results.json").write_text(json.dumps(results, indent=2))
 
-    chart = visuals.bar_chart(results, OUT_DIR / "chart.png")
+    chart = visuals.bar_chart(results, OUT_DIR / "chart.png")  # None when harness_failed
+    outcomes = visuals.outcomes_chart(results, OUT_DIR / "outcomes.png")
     card = visuals.summary_card(results, tp["title"], OUT_DIR / "card.png")
+    images = [p for p in (chart, outcomes, card) if p]
 
     tree_url, raw_base = examples_repo.public_urls(date, slug)
     md = content.write_post(tp, results, folder, tree_url, signals)
-    html = content.to_html(md, {"IMG_CHART": f"{raw_base}/chart.png", "IMG_CARD": f"{raw_base}/card.png"})
+    html = content.to_html(md, {f"IMG_{p.stem.upper()}": f"{raw_base}/{p.name}" for p in images})
     (OUT_DIR / "patreon_post.md").write_text(md)
     (OUT_DIR / "patreon_post.html").write_text(html)
 
@@ -55,9 +61,10 @@ def run(dry_run: bool, patreon_url: str | None = None) -> int:
         log.info("dry run complete — artifacts in %s; nothing published", OUT_DIR)
         return 0
 
-    examples_repo.push(folder, [chart, card], date, slug,
+    examples_repo.push(folder, images, date, slug,
                        checkout=WORK_DIR / "examples-checkout")
     state.update_last(slug, {"date": date, "title": tp["title"], "tone": tone,
+                             "status": results["status"],
                              "examples_path": examples_repo.folder_name(date, slug),
                              "topic": tp,
                              "results": {k: v for k, v in results.items() if k != "_test_log"}})
@@ -87,6 +94,19 @@ def resume_linkedin(patreon_url: str) -> int:
     return _post_linkedin(tp, results, patreon_url, last["tone"], last["slug"], OUT_DIR / "card.png")
 
 
+def resume_patreon(bundle: Path) -> int:
+    """Publish a previously generated bundle (patreon_post.html + card.png) to Patreon, then LinkedIn."""
+    history = state.load()
+    if not history:
+        raise RuntimeError("no state to resume from")
+    last = history[-1]
+    topic_, results = last["topic"], last["results"]
+    html = (bundle / "patreon_post.html").read_text(encoding="utf-8")
+    url = patreon.publish(topic_["title"], html)
+    state.update_last(last["slug"], {"patreon_url": url})
+    return _post_linkedin(topic_, results, url, last["tone"], last["slug"], bundle / "card.png")
+
+
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(name)s :: %(message)s",
                         stream=sys.stderr)
@@ -97,10 +117,22 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--patreon-url", default=os.environ.get("PATREON_URL_OVERRIDE") or None)
     li_p = sub.add_parser("linkedin")
     li_p.add_argument("--patreon-url", required=True)
+    pt = sub.add_parser("patreon")
+    pt.add_argument("--bundle", required=True, type=Path)
     a = p.parse_args(argv)
     try:
-        return run(a.dry_run, a.patreon_url) if a.cmd == "run" else resume_linkedin(a.patreon_url)
-    except (RuntimeError, patreon.PatreonError) as exc:
+        if a.cmd == "run":
+            return run(a.dry_run, a.patreon_url)
+        if a.cmd == "linkedin":
+            return resume_linkedin(a.patreon_url)
+        return resume_patreon(a.bundle)
+    except patreon.PatreonChallenge as exc:
+        log.error("%s", exc)
+        return 3
+    except patreon.PatreonError as exc:
+        log.error("%s", exc)
+        return 2
+    except RuntimeError as exc:
         log.error("%s", exc)
         return 1
 

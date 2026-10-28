@@ -1,0 +1,94 @@
+name: Patreon self-repair (Playwright MCP)
+
+# Triggered automatically when the content run exits 2 (Patreon UI flow broke), or manually.
+# Claude Code explores the live Patreon UI through the Playwright MCP, fixes
+# pipeline/publishers/patreon.py, verifies in DRAFT mode, and opens a PR. It never pushes to main
+# and never publishes.
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "content.yml run id whose content-bundle artifact holds the debug evidence + held post"
+        required: true
+        type: string
+
+concurrency:
+  group: patreon-repair
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+  issues: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install -e '.[dev]'
+      - run: playwright install --with-deps chromium
+
+      - name: Download failed run's bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download ${{ inputs.run_id }} -n content-bundle -D out/
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Configure Playwright MCP
+        run: |
+          cat > .mcp.json <<'JSON'
+          {"mcpServers": {"playwright": {"command": "npx", "args": ["@playwright/mcp@latest", "--headless"]}}}
+          JSON
+
+      - name: Repair with Claude + Playwright MCP
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PATREON_EMAIL: ${{ secrets.PATREON_EMAIL }}
+          PATREON_PASSWORD: ${{ secrets.PATREON_PASSWORD }}
+        run: |
+          claude -p "$(cat .github/prompts/patreon_repair.md)" \
+            --mcp-config .mcp.json \
+            --allowedTools "mcp__playwright,Read,Edit,Bash(pytest:*),Bash(ruff:*),Bash(python -m pipeline:*),Bash(git diff:*),Bash(ls:*),Bash(cat:*)" \
+            --max-turns 60
+
+      - name: Open PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -f .mcp.json
+          if git diff --quiet -- pipeline/publishers/patreon.py tests/test_publishers.py; then
+            echo "No fix produced"; exit 1
+          fi
+          git config user.name "content-bot"; git config user.email "content-bot@users.noreply.github.com"
+          branch="fix/patreon-flow-${{ inputs.run_id }}"
+          git checkout -b "$branch"
+          git add pipeline/publishers/patreon.py tests/test_publishers.py
+          git commit -m "fix(patreon): repair posting flow via Playwright MCP exploration"
+          git push origin "$branch"
+          gh pr create --title "Fix Patreon posting flow (auto-repair)" \
+            --body "Automated repair for content run ${{ inputs.run_id }}. Verified in draft mode only. Review the diff (selectors/login only), merge, then publish the held bundle with the **Publish held Patreon bundle** workflow." \
+            --base main --head "$branch"
+
+      - name: Open issue if repair failed
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              ...context.repo,
+              title: `Patreon self-repair failed (run ${{ inputs.run_id }})`,
+              body: `Automatic repair did not produce a fix: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\nPublish the \`content-bundle\` artifact manually, then run content.yml with the \`patreon_url\` input.`,
+              labels: ['workflow-failure'],
+            });
