@@ -52,11 +52,13 @@ def extract_files(text: str) -> dict[str, str]:
     for name, body in _FILE_RE.findall(text):
         body = body.strip("\n")
         m = re.fullmatch(r"```\w*\n(.*)\n```", body, re.S)
-        if not m and re.search(r"^```", body, re.M):
+        inner = m.group(1) if m else body
+        # Only code files: a README legitimately contains fenced examples.
+        if name.endswith(".py") and re.search(r"^```", inner, re.M):
             raise ValueError(
                 f"{name}: contains markdown fences/prose inside the file body. Output each file "
                 "as ONE clean file: no explanations, no notes, no extra code blocks, no dead code.")
-        files[name] = (m.group(1) if m else body) + "\n"
+        files[name] = inner + "\n"
     if not files:
         raise ValueError("no '=== FILE: name ===' blocks found in model reply")
     return files

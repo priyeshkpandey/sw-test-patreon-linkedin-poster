@@ -98,3 +98,8 @@ def test_prose_and_stray_fences_inside_a_file_are_rejected_with_clear_feedback()
         assert "ONE clean file" in str(exc)
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_readme_may_contain_fenced_examples():
+    out = demo.llm.extract_files("=== FILE: README.md ===\n```markdown\n# T\n\n```bash\npython demo.py\n```\n```\n=== END ===")
+    assert "python demo.py" in out["README.md"]
