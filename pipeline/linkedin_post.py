@@ -45,7 +45,7 @@ def write(topic: dict, results: dict, tone: str, *, client=None) -> str:
     })
     feedback = ""
     for _ in range(2):
-        text = llm.complete(system, payload + feedback, model=HAIKU_MODEL, max_tokens=2000,
+        text = llm.complete(system, payload + feedback, model=HAIKU_MODEL, max_tokens=4000,
                             client=client)
         problems = validate(text)
         if not problems:

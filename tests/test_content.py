@@ -92,7 +92,7 @@ def test_topic_gives_up_with_runtime_error():
         topic.choose([{"title": "s", "url": "u"}], set(), client=FakeClient(['{"title": "x'] * 3))
 
 
-def test_complete_sends_no_thinking_param_and_ignores_non_text_blocks():
+def test_complete_thinking_param_is_per_model_and_non_text_blocks_ignored():
     seen = {}
 
     class C:
@@ -107,4 +107,6 @@ def test_complete_sends_no_thinking_param_and_ignores_non_text_blocks():
     c = C()
     c.messages = c
     assert llm.complete("s", "u", model="m", client=c) == "hi"
-    assert "thinking" not in seen  # accepted values differ per model (Haiku vs Sonnet): send none
+    assert "thinking" not in seen  # Haiku rejects between_tools: no param for it
+    llm.complete("s", "u", model="claude-sonnet-5-5", client=c)
+    assert seen["thinking"] == {"type": "between_tools"}  # Sonnet thinks by default and eats max_tokens

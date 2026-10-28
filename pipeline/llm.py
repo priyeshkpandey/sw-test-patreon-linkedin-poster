@@ -27,6 +27,12 @@ log = logging.getLogger(__name__)
 
 STREAM_ABOVE = 16000
 
+# Sonnet 5.5 thinks by default and the thinking tokens count against max_tokens: with the parameter
+# omitted, experiment replies were 100% thinking (blocks=['thinking'], text_chars=0) at 16000 tokens.
+# "between_tools" turns that off for Sonnet ("disabled" is rejected with a 400). Haiku 5.5 rejects
+# "between_tools" ("not supported for this model"), so it gets no parameter. Verified from CI logs.
+THINKING_PARAM: dict[str, dict] = {"claude-sonnet-5-5": {"type": "between_tools"}}
+
 
 class TruncatedReply(RuntimeError):
     """The model hit max_tokens; `.partial` holds what it wrote."""
@@ -41,6 +47,8 @@ def complete(system: str, user: str, *, model: str, max_tokens: int = 4096, clie
     client = client or _client()
     kwargs = dict(model=model, max_tokens=max_tokens, system=system,
                   messages=[{"role": "user", "content": user}])
+    if model in THINKING_PARAM:
+        kwargs["thinking"] = THINKING_PARAM[model]
     if max_tokens > STREAM_ABOVE:
         # The SDK refuses non-streaming requests that may exceed ~10 minutes (max_tokens > ~21k).
         with client.messages.stream(**kwargs) as stream:

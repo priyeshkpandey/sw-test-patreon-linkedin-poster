@@ -17,6 +17,7 @@
 - 2026-10-29 S2: first run where the experiment worked (attempt 2). Died at post stage on number check ('75' = 0.75 as %). Check loosened + non-fatal with REVIEW_NOTES.md (plan 2e).
 - 2026-10-29 S2: crash = per-model `thinking` param (Haiku rejects between_tools). Removed param. Experiment harness_failed x3 for model-quality reasons (stray fences; wrong self-check expectations); prompt + extractor tightened (plan 2f). Note: three `harness_failed` example folders exist in the examples repo from failed runs; delete by hand if unwanted.
 - 2026-10-29 S2: owner saw truncation at 16000. Raised to 32000 with streaming; truncation now repairable (plan 2g). Untested live.
+- 2026-10-29 S2: log of run 19:22 proved thinking eats the whole budget on Sonnet when no param is sent. Per-model thinking param now (Sonnet between_tools, Haiku none). The 'truncation' was thinking, not code length.
 
 ## Blockers / open questions
 - Examples repo `sw-testing-developing-tech-examples` is empty; first push creates the initial commit.
