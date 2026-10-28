@@ -21,13 +21,13 @@ You are a senior SDET / QA engineer who tracks AI developments in software testi
 | 2 | Topic selection | `topic.py` | `topic.json`; avoids slugs in `state/history.json` |
 | 3 | Experiment build + run | `demo.py` (model replies with `=== FILE: name ===` text blocks, not JSON — escaped code in JSON proved fragile) | `results.json` (`status` ok/harness_failed, `verdict`, per-case `outcomes`, metrics, chart data, table, notes), `ATTEMPTS.md` on harness failure |
 | 4 | Visuals | `visuals.py` | `outcomes.png` (worked/partial/failed per case), `chart.png` (metrics; absent if harness_failed), `card.png` (headline card, also the LinkedIn image) |
-| 5 | Patreon post | `content.py` | `patreon_post.md` + `patreon_post.html` (images referenced relatively); every number verified against `results.json` |
+| 5 | Patreon post | `content.py` | `patreon_post.md` + `patreon_post.html` (images referenced relatively); every number checked against `results.json` (simple re-expressions like 0.75 → 75% allowed); one rewrite attempted, then any remaining untraceable numbers are listed in `REVIEW_NOTES.md` instead of aborting the run |
 | 6 | Examples repo (optional) | `examples_repo.py` | experiment + images committed to the examples repo |
 | 7 | LinkedIn text | `linkedin_post.py` | `linkedin_post.txt` with the literal `[PATREON_LINK]` placeholder, tone rotated |
 | 8 | Bundle + state | `main.py` | `out/bundle/` incl. `UPLOAD_GUIDE.md`; append to `state/history.json` (committed back by the workflow with `[skip ci]`) |
 
 ## 4. The bundle (the deliverable) — `out/bundle/`, uploaded as workflow artifact `content-bundle`
-`patreon_post.html` (open in a browser, select all, copy, paste into Patreon's editor — images load from the same folder) · `patreon_post.md` (fallback) · `outcomes.png`, `chart.png`, `card.png` · `linkedin_post.txt` · `UPLOAD_GUIDE.md` (step-by-step manual upload, verdict, tone) · `results.json`, `signals.json`, `topic.json` · `demo/` (only when the examples repo was not pushed).
+`patreon_post.html` (open in a browser, select all, copy, paste into Patreon's editor — images load from the same folder) · `patreon_post.md` (fallback) · `outcomes.png`, `chart.png`, `card.png` · `linkedin_post.txt` · `UPLOAD_GUIDE.md` (step-by-step manual upload, verdict, tone) · `REVIEW_NOTES.md` (only if some number could not be verified) · `results.json`, `signals.json`, `topic.json` · `demo/` (only when the examples repo was not pushed).
 Patreon-friendly output rules: plain Markdown/HTML only (headings, lists, tables, images); **no Mermaid or other diagram code** (Patreon can't render it) — describe the pipeline as a numbered list or use the generated images.
 
 ## 5. LinkedIn text (marketing-expert persona)

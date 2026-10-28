@@ -23,7 +23,7 @@ def test_run_produces_bundle_and_publishes_nothing(tmp_path, monkeypatch):
     monkeypatch.setattr(main.research, "gather", lambda: [{"title": "s", "url": "u", "score": 1, "source": "x"}])
     monkeypatch.setattr(main.topic, "choose", lambda s, u: tp)
     monkeypatch.setattr(main.demo, "build_and_run", lambda t, f: (f.mkdir(parents=True), (f / "demo.py").write_text("x"), res)[2])
-    monkeypatch.setattr(main.content, "write_post", lambda *a, **k: "## What broke\n\n{{IMG_OUTCOMES}}\n")
+    monkeypatch.setattr(main.content, "write_post", lambda *a, **k: ("## What broke\n\n{{IMG_OUTCOMES}}\n", ["42"]))
     monkeypatch.setattr(main.linkedin_post, "write", lambda *a, **k: "post [PATREON_LINK]")
     assert main.run() == 0
     b = tmp_path / "out" / "bundle"
@@ -32,4 +32,5 @@ def test_run_produces_bundle_and_publishes_nothing(tmp_path, monkeypatch):
             "outcomes.png", "card.png", "results.json", "demo"} <= names
     assert 'src="outcomes.png"' in (b / "patreon_post.html").read_text()
     assert "[PATREON_LINK]" in (b / "UPLOAD_GUIDE.md").read_text() and saved["examples_pushed"] is False
+    assert "42" in (b / "REVIEW_NOTES.md").read_text()
     assert json.loads((b / "results.json").read_text())["status"] == "harness_failed"

@@ -35,6 +35,12 @@ Legend: [x] done · [ ] todo. Update this file and `PROGRESS.md` after every wor
 - [x] 2d.2b Regression from 2d.1: the API returned HTTP 400 for `thinking: {"type": "disabled"}` on this model ("send between_tools instead"; the model "does not think before responding"). Now sends `{"type": "between_tools"}`. This also makes the "thinking ate the budget" explanation doubtful — the true cause of the empty replies is still unconfirmed
 - [ ] 2d.3 Re-run and check the new log line `llm: ... blocks=[...] out_tokens=...`; if replies are still empty/truncated, reduce the experiment size or split into one call per file
 
+## Phase 2e — Fix: run died at the post stage (run 2026-10-28 19:06)
+- [x] 2e.1 Evidence: experiment succeeded on attempt 2 (attempt 1 IndexError, repaired); then `content: unverifiable numbers remain in post: ['75']` aborted the whole run, discarding the experiment. Root causes: (a) check treated 0.75 -> "75%" as invented; (b) a stray number was fatal
+- [x] 2e.2 Derived forms (x100, 100-x, rounding) now count as traceable; remaining untraceable numbers no longer abort — post is kept, listed in `REVIEW_NOTES.md` in the bundle for the owner to check. Spec §2 / §4 updated
+- [x] 2e.3 Tests
+- [ ] 2e.4 Re-run and confirm a full bundle (and code) lands in the examples repo
+
 ## Phase 3 — Automation
 - [x] 3.1 ci.yml (lint + tests)
 - [x] 3.2 content.yml (manual trigger → bundle artifact → commit state)

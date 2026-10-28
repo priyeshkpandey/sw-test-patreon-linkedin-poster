@@ -57,8 +57,8 @@ def test_harness_failed_post_must_say_so():
     with pytest.raises(RuntimeError, match="harness_failed"):
         content.write_post({"title": "t"}, res, __import__("pathlib").Path("."), "u", [],
                            client=FakeClient(["# Great success, it all works"]))
-    ok = content.write_post({"title": "t"}, res, __import__("pathlib").Path("."), "u", [],
-                            client=FakeClient(["## What I tried and where it broke"]))
+    ok, _ = content.write_post({"title": "t"}, res, __import__("pathlib").Path("."), "u", [],
+                               client=FakeClient(["## What I tried and where it broke"]))
     assert "broke" in ok
 
 
@@ -66,10 +66,16 @@ def test_missing_image_placeholder_removed():
     assert "IMG_CHART" not in content.to_html("a\n\n{{IMG_CHART}}\n\nb", {})
 
 
-def test_post_numbers_retry_then_raise():
+def test_derived_percentages_are_allowed():
+    res = {**RES, "summary": {"detect_rate": 0.75}}
+    assert content.check_numbers("It caught 75% of bugs.", res) == []
+    assert content.check_numbers("It caught 40% of bugs.", res) == ["40"]
+
+
+def test_post_numbers_retry_then_flag_not_raise():
     c = FakeClient(["costs 99.9", "still 88.8"])
-    with pytest.raises(RuntimeError):
-        content.write_post({"title": "t"}, RES, __import__("pathlib").Path("."), "u", [], client=c)
+    md, bad = content.write_post({"title": "t"}, RES, __import__("pathlib").Path("."), "u", [], client=c)
+    assert md == "still 88.8" and bad == ["88.8"]  # kept and flagged, run not thrown away
 
 
 def test_topic_retries_truncated_json_then_succeeds():

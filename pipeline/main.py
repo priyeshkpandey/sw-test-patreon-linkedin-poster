@@ -59,7 +59,7 @@ def run(push_examples: bool = True) -> int:
     images = [p for p in (chart, outcomes, card) if p]
 
     tree_url, _ = examples_repo.public_urls(date, slug)
-    md = content.write_post(tp, results, folder, tree_url, signals)
+    md, unverified = content.write_post(tp, results, folder, tree_url, signals)
     html = content.to_html(md, {f"IMG_{p.stem.upper()}": p.name for p in images})
     tone = state.pick_tone(history, slug)
     log.info("topic=%s tone=%s status=%s", slug, tone, results["status"])
@@ -74,6 +74,11 @@ def run(push_examples: bool = True) -> int:
     public = {k: v for k, v in results.items() if k != "_test_log"}
     (bundle / "patreon_post.md").write_text(md, encoding="utf-8")
     (bundle / "patreon_post.html").write_text(f'<meta charset="utf-8">\n{html}', encoding="utf-8")
+    if unverified:
+        (bundle / "REVIEW_NOTES.md").write_text(
+            "# Check before posting\n\nThese numbers appear in `patreon_post.md` but could not be traced to "
+            "`results.json` (even after one rewrite). Verify each one or edit it out:\n\n"
+            + "\n".join(f"- {n}" for n in unverified) + "\n", encoding="utf-8")
     (bundle / "linkedin_post.txt").write_text(linkedin_post.write(tp, results, tone), encoding="utf-8")
     (bundle / "results.json").write_text(json.dumps(public, indent=2), encoding="utf-8")
     (bundle / "signals.json").write_text(json.dumps(signals, indent=2), encoding="utf-8")
