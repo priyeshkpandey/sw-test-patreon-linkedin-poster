@@ -31,9 +31,9 @@ def complete(system: str, user: str, *, model: str, max_tokens: int = 4096, clie
         model=model,
         max_tokens=max_tokens,
         system=system,
-        # Thinking tokens count against max_tokens; with it on, long code replies were cut off
-        # before any visible text was written (empty reply). We want the answer, not the reasoning.
-        thinking={"type": "disabled"},
+        # This model rejects {"type": "disabled"} (HTTP 400) and asks for "between_tools" to switch
+        # thinking off.
+        thinking={"type": "between_tools"},
         messages=[{"role": "user", "content": user}],
     )
     text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()

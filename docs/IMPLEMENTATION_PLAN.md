@@ -32,6 +32,7 @@ Legend: [x] done · [ ] todo. Update this file and `PROGRESS.md` after every wor
 ## Phase 2d — Fix: harness_failed on all 3 attempts (run 2026-10-28 18:53)
 - [x] 2d.1 Evidence: every attempt stopped at max_tokens=16000 yet the visible reply was EMPTY (0 bytes, `attempt_N_reply.txt`), so no `=== FILE ===` blocks. Likely cause (inferred, not yet confirmed): thinking tokens consumed the whole budget before any text. Fix: `thinking={"type": "disabled"}` on every call; per-call log of stop reason, block types, output tokens, text length
 - [x] 2d.2 Test (27 pass)
+- [x] 2d.2b Regression from 2d.1: the API returned HTTP 400 for `thinking: {"type": "disabled"}` on this model ("send between_tools instead"; the model "does not think before responding"). Now sends `{"type": "between_tools"}`. This also makes the "thinking ate the budget" explanation doubtful — the true cause of the empty replies is still unconfirmed
 - [ ] 2d.3 Re-run and check the new log line `llm: ... blocks=[...] out_tokens=...`; if replies are still empty/truncated, reduce the experiment size or split into one call per file
 
 ## Phase 3 — Automation
