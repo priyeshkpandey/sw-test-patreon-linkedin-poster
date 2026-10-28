@@ -25,21 +25,38 @@ def _client() -> Any:
 log = logging.getLogger(__name__)
 
 
-def complete(system: str, user: str, *, model: str, max_tokens: int = 4096, client: Any = None) -> str:
+STREAM_ABOVE = 16000
+
+
+class TruncatedReply(RuntimeError):
+    """The model hit max_tokens; `.partial` holds what it wrote."""
+
+    def __init__(self, msg: str, partial: str):
+        super().__init__(msg)
+        self.partial = partial
+
+
+def complete(system: str, user: str, *, model: str, max_tokens: int = 4096, client: Any = None,
+             raise_on_truncate: bool = False) -> str:
     client = client or _client()
-    resp = client.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        system=system,
-        messages=[{"role": "user", "content": user}],
-    )
+    kwargs = dict(model=model, max_tokens=max_tokens, system=system,
+                  messages=[{"role": "user", "content": user}])
+    if max_tokens > STREAM_ABOVE:
+        # The SDK refuses non-streaming requests that may exceed ~10 minutes (max_tokens > ~21k).
+        with client.messages.stream(**kwargs) as stream:
+            resp = stream.get_final_message()
+    else:
+        resp = client.messages.create(**kwargs)
+    truncated = getattr(resp, "stop_reason", None) == "max_tokens"
     text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
     usage = getattr(resp, "usage", None)
     log.info("llm: model=%s stop=%s blocks=%s out_tokens=%s text_chars=%d", model,
              getattr(resp, "stop_reason", None), [getattr(b, "type", "?") for b in resp.content],
              getattr(usage, "output_tokens", "?"), len(text))
-    if getattr(resp, "stop_reason", None) == "max_tokens":
+    if truncated:
         log.warning("llm: reply truncated at max_tokens=%d (model=%s)", max_tokens, model)
+        if raise_on_truncate:
+            raise TruncatedReply(f"reply was cut off at max_tokens={max_tokens}", text)
     return text
 
 

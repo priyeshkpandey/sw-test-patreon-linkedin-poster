@@ -16,6 +16,7 @@
 - 2026-10-29 S2: my thinking={'disabled'} change broke the topic call (HTTP 400). Switched to 'between_tools'. Cause of the empty experiment replies remains unconfirmed; read the new `llm:` log line on the next run.
 - 2026-10-29 S2: first run where the experiment worked (attempt 2). Died at post stage on number check ('75' = 0.75 as %). Check loosened + non-fatal with REVIEW_NOTES.md (plan 2e).
 - 2026-10-29 S2: crash = per-model `thinking` param (Haiku rejects between_tools). Removed param. Experiment harness_failed x3 for model-quality reasons (stray fences; wrong self-check expectations); prompt + extractor tightened (plan 2f). Note: three `harness_failed` example folders exist in the examples repo from failed runs; delete by hand if unwanted.
+- 2026-10-29 S2: owner saw truncation at 16000. Raised to 32000 with streaming; truncation now repairable (plan 2g). Untested live.
 
 ## Blockers / open questions
 - Examples repo `sw-testing-developing-tech-examples` is empty; first push creates the initial commit.

@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 from pipeline import llm
-from pipeline.config import DEMO_MAX_ATTEMPTS, DEMO_TIMEOUT_S, SONNET_MODEL
+from pipeline.config import DEMO_MAX_ATTEMPTS, DEMO_MAX_TOKENS, DEMO_TIMEOUT_S, SONNET_MODEL
 
 log = logging.getLogger(__name__)
 
@@ -110,10 +110,18 @@ def build_and_run(topic: dict, folder: Path, *, client=None) -> dict:
     feedback = ""
     for attempt in range(1, DEMO_MAX_ATTEMPTS + 1):
         prompt = f"Topic: {json.dumps(topic)}\n{feedback}"
-        reply = llm.complete(SYSTEM, prompt, model=SONNET_MODEL, max_tokens=16000, client=client)
-        # Always keep the raw reply, so even a broken attempt leaves its code in the examples repo.
-        _save_log(folder, f"attempt_{attempt}_reply.txt", reply)
         try:
+            try:
+                reply = llm.complete(SYSTEM, prompt, model=SONNET_MODEL, max_tokens=DEMO_MAX_TOKENS,
+                                     client=client, raise_on_truncate=True)
+            except llm.TruncatedReply as exc:
+                _save_log(folder, f"attempt_{attempt}_reply.txt", exc.partial)
+                raise RuntimeError(
+                    "Your reply was CUT OFF by the output limit, so the files were incomplete. "
+                    "Write a much smaller experiment: fewer cases, no dead code, minimal comments, "
+                    "under ~400 lines total for all files.") from exc
+            # Always keep the raw reply, so even a broken attempt leaves its code in the examples repo.
+            _save_log(folder, f"attempt_{attempt}_reply.txt", reply)
             files = llm.extract_files(reply)
             _write_files(files, folder)
             (folder / "results.json").unlink(missing_ok=True)

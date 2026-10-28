@@ -47,6 +47,12 @@ Legend: [x] done · [ ] todo. Update this file and `PROGRESS.md` after every wor
 - [x] 2f.3 Tests (29 pass)
 - [ ] 2f.4 Re-run. If harness_failed persists from the model's own wrong expectations, consider raising DEMO_MAX_ATTEMPTS to 4-5 or simplifying the experiment scope in the topic prompt
 
+## Phase 2g — Fix: experiment replies truncated at max_tokens=16000 (owner report, run 2026-10-28 19:22)
+- [x] 2g.1 Experiment limit raised 16000 -> 32000 (`config.DEMO_MAX_TOKENS`). Requests above 16000 use streaming (`client.messages.stream`), since the SDK rejects long non-streaming requests (>10 min)
+- [x] 2g.2 A truncated reply is now detected (`TruncatedReply`), its partial text is saved as `attempt_N_reply.txt`, and the retry feedback tells the model to write a much smaller experiment (previously a cut-off reply was parsed as if complete)
+- [x] 2g.3 Tests (32 pass)
+- [ ] 2g.4 Re-run. Unverified: that 32000 is accepted for this model and that streaming works against the live API. The earlier replies in the logs were ~7.6-11.9k output tokens, so truncation at 16k looked unusual; if it persists at 32k, the model is over-writing and the prompt's size cap matters more than the limit
+
 ## Phase 3 — Automation
 - [x] 3.1 ci.yml (lint + tests)
 - [x] 3.2 content.yml (manual trigger → bundle artifact → commit state)

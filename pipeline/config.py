@@ -22,6 +22,7 @@ EXAMPLES_BRANCH: Final[str] = "main"
 
 SIGNAL_LOOKBACK_DAYS: Final[int] = 14
 DEMO_MAX_ATTEMPTS: Final[int] = 3
+DEMO_MAX_TOKENS: Final[int] = 32000
 DEMO_TIMEOUT_S: Final[int] = 120
 LINKEDIN_MAX_CHARS: Final[int] = 1300
 

@@ -21,6 +21,15 @@ class FakeClient:
             text = next(self.replies)
         return type("R", (), {"content": [B()]})()
 
+    def stream(self, **kw):  # used for large max_tokens
+        resp = self.create(**kw)
+
+        class Ctx:
+            def __enter__(s): return s
+            def __exit__(s, *a): return False
+            def get_final_message(s): return resp
+        return Ctx()
+
 
 def reply(demo_py):
     return (f"=== FILE: demo.py ===\n{demo_py}\n=== FILE: test_demo.py ===\n```python\n{GOOD_TEST}```\n"
@@ -103,3 +112,35 @@ def test_prose_and_stray_fences_inside_a_file_are_rejected_with_clear_feedback()
 def test_readme_may_contain_fenced_examples():
     out = demo.llm.extract_files("=== FILE: README.md ===\n```markdown\n# T\n\n```bash\npython demo.py\n```\n```\n=== END ===")
     assert "python demo.py" in out["README.md"]
+
+
+class StreamClient:
+    """Mimics client.messages.stream(...) as a context manager; create() must NOT be used."""
+
+    def __init__(self, text, stop="end_turn"):
+        self.messages, self.text, self.stop = self, text, stop
+
+    def create(self, **kw):
+        raise AssertionError("large requests must stream")
+
+    def stream(self, **kw):
+        outer = self
+
+        class Ctx:
+            def __enter__(s): return s
+            def __exit__(s, *a): return False
+            def get_final_message(s):
+                b = type("B", (), {"type": "text", "text": outer.text})()
+                return type("R", (), {"content": [b], "stop_reason": outer.stop, "usage": None})()
+        return Ctx()
+
+
+def test_large_max_tokens_uses_streaming():
+    assert demo.llm.complete("s", "u", model="m", max_tokens=32000, client=StreamClient("ok")) == "ok"
+
+
+def test_truncated_reply_is_a_repairable_harness_error_and_partial_is_saved(tmp_path):
+    res = demo.build_and_run({"title": "t"}, tmp_path, client=StreamClient("=== FILE: demo.py ===\nimport", "max_tokens"))
+    assert res["status"] == "harness_failed"
+    assert "CUT OFF" in res["attempt_log"][0]
+    assert (tmp_path / "attempt_1_reply.txt").read_text().endswith("import")
