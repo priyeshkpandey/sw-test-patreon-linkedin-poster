@@ -70,3 +70,17 @@ def test_post_numbers_retry_then_raise():
     c = FakeClient(["costs 99.9", "still 88.8"])
     with pytest.raises(RuntimeError):
         content.write_post({"title": "t"}, RES, __import__("pathlib").Path("."), "u", [], client=c)
+
+
+def test_topic_retries_truncated_json_then_succeeds():
+    from pipeline import topic
+    good = '{"title": "T", "slug": "t", "angle": "a", "hypothesis": "h", "signal_urls": []}'
+    out = topic.choose([{"title": "s", "url": "u"}], set(),
+                       client=FakeClient(['{"title": "T", "slug": "unterminated', good]))
+    assert out["slug"] == "t"
+
+
+def test_topic_gives_up_with_runtime_error():
+    from pipeline import topic
+    with pytest.raises(RuntimeError, match="valid JSON"):
+        topic.choose([{"title": "s", "url": "u"}], set(), client=FakeClient(['{"title": "x'] * 3))

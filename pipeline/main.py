@@ -106,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
     try:
         return run(push_examples=not a.no_push_examples)
-    except RuntimeError as exc:
+    except (RuntimeError, ValueError) as exc:
         log.error("%s", exc)
         return 1
 

@@ -38,7 +38,7 @@ def write_post(topic: dict, results: dict, folder: Path, examples_url: str, sign
         "examples_url": examples_url, "signals": signals[:8], "code": code,
     })
     system = (PROMPTS_DIR / "patreon_post.md").read_text(encoding="utf-8")
-    md = llm.complete(system, payload, model=SONNET_MODEL, max_tokens=6000, client=client)
+    md = llm.complete(system, payload, model=SONNET_MODEL, max_tokens=8000, client=client)
     if results.get("status") == "harness_failed" and "harness" not in md.lower() and "broke" not in md.lower():
         raise RuntimeError("content: harness_failed run must be reported as such, not as a result")
     bad = check_numbers(md, results, extra_allowed=json.dumps(topic) + json.dumps(signals[:8]))
@@ -46,7 +46,7 @@ def write_post(topic: dict, results: dict, folder: Path, examples_url: str, sign
         md = llm.complete(
             system, payload + f"\n\nYour draft used numbers not present in results.json: {bad}. "
             "Rewrite without them.\n\nDraft:\n" + md,
-            model=SONNET_MODEL, max_tokens=6000, client=client)
+            model=SONNET_MODEL, max_tokens=8000, client=client)
         bad = check_numbers(md, results, extra_allowed=json.dumps(topic) + json.dumps(signals[:8]))
         if bad:
             raise RuntimeError(f"content: unverifiable numbers remain in post: {bad}")

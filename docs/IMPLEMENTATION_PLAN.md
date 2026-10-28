@@ -24,6 +24,11 @@ Legend: [x] done · [ ] todo. Update this file and `PROGRESS.md` after every wor
 - [x] 2b.3 Tests for the above (24 pass)
 - [ ] 2b.4 Re-run the workflow; confirm the new examples folder has code + run output. The old `examples/2026-10-28-coverage-criteria-vs-llm-style-bugs` folder is image+JSON only; its slug is marked used in `state/history.json` (delete that entry to retry the topic)
 
+## Phase 2c — Fix: topic stage crashed (run 2026-10-28 18:45)
+- [x] 2c.1 Root cause: topic reply truncated at max_tokens=1000 -> invalid JSON -> uncaught JSONDecodeError. Raised limits (topic 4000, post 8000, LinkedIn 2000), topic retries up to 3x, bad JSON now exits cleanly via RuntimeError/ValueError handling
+- [x] 2c.2 Tests (26 pass)
+- [ ] 2c.3 Re-run workflow to confirm
+
 ## Phase 3 — Automation
 - [x] 3.1 ci.yml (lint + tests)
 - [x] 3.2 content.yml (manual trigger → bundle artifact → commit state)
