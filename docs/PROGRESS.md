@@ -12,6 +12,7 @@
 
 - 2026-10-29 S2: first live run found (via owner) that the examples repo got only images + JSON. Cause: JSON-wrapped code failed to parse 3x -> harness_failed -> no code written. Fixed (see plan 2b). Needs a re-run to confirm.
 - 2026-10-29 S2: workflow run failed in topic stage (truncated JSON at max_tokens=1000). Fixed, see plan 2c. Not yet re-run.
+- 2026-10-29 S2: re-run still harness_failed x3: replies empty at the 16000-token cap. Disabled thinking + added diagnostics (plan 2d). Cause inferred, not confirmed; needs another run.
 
 ## Blockers / open questions
 - Examples repo `sw-testing-developing-tech-examples` is empty; first push creates the initial commit.

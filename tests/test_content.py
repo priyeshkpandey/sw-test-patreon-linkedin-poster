@@ -84,3 +84,21 @@ def test_topic_gives_up_with_runtime_error():
     from pipeline import topic
     with pytest.raises(RuntimeError, match="valid JSON"):
         topic.choose([{"title": "s", "url": "u"}], set(), client=FakeClient(['{"title": "x'] * 3))
+
+
+def test_complete_disables_thinking_and_ignores_non_text_blocks():
+    seen = {}
+
+    class C:
+        messages = None
+
+        def create(self, **kw):
+            seen.update(kw)
+            think = type("B", (), {"type": "thinking"})()
+            text = type("B", (), {"type": "text", "text": " hi "})()
+            return type("R", (), {"content": [think, text], "stop_reason": "end_turn", "usage": None})()
+
+    c = C()
+    c.messages = c
+    assert llm.complete("s", "u", model="m", client=c) == "hi"
+    assert seen["thinking"] == {"type": "disabled"}

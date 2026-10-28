@@ -31,11 +31,19 @@ def complete(system: str, user: str, *, model: str, max_tokens: int = 4096, clie
         model=model,
         max_tokens=max_tokens,
         system=system,
+        # Thinking tokens count against max_tokens; with it on, long code replies were cut off
+        # before any visible text was written (empty reply). We want the answer, not the reasoning.
+        thinking={"type": "disabled"},
         messages=[{"role": "user", "content": user}],
     )
+    text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
+    usage = getattr(resp, "usage", None)
+    log.info("llm: model=%s stop=%s blocks=%s out_tokens=%s text_chars=%d", model,
+             getattr(resp, "stop_reason", None), [getattr(b, "type", "?") for b in resp.content],
+             getattr(usage, "output_tokens", "?"), len(text))
     if getattr(resp, "stop_reason", None) == "max_tokens":
         log.warning("llm: reply truncated at max_tokens=%d (model=%s)", max_tokens, model)
-    return "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
+    return text
 
 
 _FILE_RE = re.compile(r"^=== FILE: (\S+) ===[ \t]*\n(.*?)(?=^=== FILE: \S+ ===|^=== END ===|\Z)", re.S | re.M)
