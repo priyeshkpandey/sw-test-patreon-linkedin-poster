@@ -7,5 +7,14 @@
     "status": "ok",
     "examples_path": "examples/2026-10-28-coverage-vs-mutation-llm-generated-code",
     "examples_pushed": true
+  },
+  {
+    "slug": "hybrid-deterministic-llm-code-review-precision-recall",
+    "date": "2026-10-29",
+    "title": "Hybrid Code Review: Deterministic Rule Pipeline + Simulated LLM Triage vs. Either Alone",
+    "tone": "data-first",
+    "status": "ok",
+    "examples_path": "examples/2026-10-29-hybrid-deterministic-llm-code-review-precision-recall",
+    "examples_pushed": true
   }
 ]
