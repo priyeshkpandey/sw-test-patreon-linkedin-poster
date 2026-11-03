@@ -16,5 +16,14 @@
     "status": "ok",
     "examples_path": "examples/2026-10-29-hybrid-deterministic-llm-code-review-precision-recall",
     "examples_pushed": true
+  },
+  {
+    "slug": "self-healing-locators-dom-drift-simulation",
+    "date": "2026-11-03",
+    "title": "Self-Healing Locators: Heuristic Fallback Chains vs. Brittle Selectors Under DOM Drift",
+    "tone": "behind-the-scenes",
+    "status": "ok",
+    "examples_path": "examples/2026-11-03-self-healing-locators-dom-drift-simulation",
+    "examples_pushed": true
   }
 ]
