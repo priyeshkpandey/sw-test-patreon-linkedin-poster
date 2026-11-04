@@ -25,5 +25,14 @@
     "status": "ok",
     "examples_path": "examples/2026-11-03-self-healing-locators-dom-drift-simulation",
     "examples_pushed": true
+  },
+  {
+    "slug": "llm-judge-flakiness-self-consistency-voting",
+    "date": "2026-11-04",
+    "title": "Flaky Verdicts: Self-Consistency Voting vs Single-Shot LLM-as-Judge in Test Pipelines",
+    "tone": "story",
+    "status": "ok",
+    "examples_path": "examples/2026-11-04-llm-judge-flakiness-self-consistency-voting",
+    "examples_pushed": true
   }
 ]
