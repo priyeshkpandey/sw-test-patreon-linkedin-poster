@@ -34,5 +34,14 @@
     "status": "ok",
     "examples_path": "examples/2026-11-04-llm-judge-flakiness-self-consistency-voting",
     "examples_pushed": true
+  },
+  {
+    "slug": "test-suite-reduction-ai-generated-redundancy",
+    "date": "2026-11-05",
+    "title": "Evaluating Test-Suite Reduction Strategies on Redundant AI-Generated Test Suites",
+    "tone": "prediction",
+    "status": "ok",
+    "examples_path": "examples/2026-11-05-test-suite-reduction-ai-generated-redundancy",
+    "examples_pushed": true
   }
 ]
